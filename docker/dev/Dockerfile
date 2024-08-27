@@ -10,11 +10,15 @@ RUN set -x && apt-get update -qq \
   && apt-get -y install --no-install-recommends \
   cmake make \
   default-jdk \
+  ctags \
+  unzip \
+  gcc-9 gcc-9-plugin-dev g++-9 \
   universal-ctags \
   curl ca-certificates gnupg \
   wget \
   doxygen \
   gcc-11 gcc-11-plugin-dev g++-11 \
+
   libboost-filesystem-dev \
   libboost-log-dev \
   libboost-program-options-dev \

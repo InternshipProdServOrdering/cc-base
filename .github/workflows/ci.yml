@@ -48,6 +48,36 @@ jobs:
       - name: Update apt-get
         run: sudo apt-get update
 
+
+      # Ubuntu 18.04 commands
+      - name: Install required packages Ubuntu 18
+        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        run: >
+          sudo apt-get install -y git cmake make g++ gcc-7-plugin-dev libboost-all-dev
+          llvm-10-dev clang-10 libclang-10-dev default-jdk libssl1.0-dev libgraphviz-dev
+          libmagic-dev libgit2-dev ctags libgtest-dev npm libldap2-dev unzip
+
+      - name: Install Postgresql Ubuntu 18
+        if: ${{ matrix.os == 'ubuntu-18.04' && matrix.db == 'postgresql' }}
+        run: sudo apt-get install postgresql-server-dev-10
+
+      - name: Install SQLite3 Ubuntu 18
+        if: ${{ matrix.os == 'ubuntu-18.04' && matrix.db == 'sqlite3' }}
+        run: sudo apt-get install libsqlite3-dev
+
+      - name: Cache Thrift Ubuntu 18
+        id: thrift-cache
+        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        uses: actions/cache@v2
+        with:
+          path: ~/thrift_install
+          key: ${{ matrix.db }}-thrift-v2
+
+      - name: Install Thrift
+        if: ${{ matrix.os == 'ubuntu-18.04' && steps.thrift-cache.outputs.cache-hit != 'true' }}
+        run: >
+          cd $HOME
+
       - name: Install required packages for build
         run: ./.github/scripts/${{ matrix.os }}/setup_build.sh
 
@@ -77,6 +107,41 @@ jobs:
       - name: Compile dependencies
         if: ${{ env.HAS_COMPILED_DEPENDENCIES == 'true' && steps.restore-compiled-dependencies.outputs.cache-hit != 'true' }}
         run: |
+
+
+          cd $HOME
+          mkdir /tmp/build2src
+          cd /tmp/build2src
+          curl -sSfO https://download.build2.org/0.14.0/build2-install-0.14.0.sh
+          sh build2-install-0.14.0.sh --yes --trust yes "$HOME/build2_install/"
+          export PATH=$PATH:$HOME/build2_install/bin/
+          mkdir /tmp/odb_build
+          cd /tmp/odb_build
+          bpkg create --quiet --jobs $(nproc) cc config.cxx=g++ config.cc.coptions=-O3 config.bin.rpath="$HOME/odb_install/lib" config.install.root="$HOME/odb_install" config.install.sudo=sudo
+          bpkg add https://pkg.cppget.org/1/beta --trust-yes
+          bpkg fetch --trust-yes
+          bpkg build odb --yes
+          bpkg build libodb --yes
+          bpkg build libodb-sqlite --yes
+          bpkg build libodb-pgsql --yes
+          bpkg install --all --recursive
+
+      - name: Export environment variables Ubuntu 18
+        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        run: |
+          ls $HOME/odb_install/bin
+          ls $HOME/thrift_install/bin
+          echo "CMAKE_PREFIX_PATH=$HOME/thrift_install:$HOME/odb_install:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          echo "PATH=$HOME/thrift_install/bin:$HOME/odb_install/bin:$PATH" >> $GITHUB_ENV
+
+      # Ubuntu 20.04 commands
+      - name: Install required packages Ubuntu 20
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        run: >
+          sudo apt-get install -y git cmake make g++ libboost-all-dev llvm-10-dev clang-10
+          libclang-10-dev odb libodb-dev thrift-compiler libthrift-dev default-jdk libssl-dev
+          libgraphviz-dev libmagic-dev libgit2-dev ctags libgtest-dev npm libldap2-dev unzip
+
           chmod +x ./.github/scripts/${{ matrix.os }}/compile_build.sh
           ./.github/scripts/${{ matrix.os }}/compile_build.sh
 
@@ -212,9 +277,37 @@ jobs:
       - name: Update apt-get
         run: sudo apt-get update
 
+
+
+      # Ubuntu 18.04 commands
+      - name: Install required packages Ubuntu 18
+        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        run: >
+          sudo apt-get install -y git cmake make g++ gcc-7-plugin-dev libgraphviz-dev
+          libboost-filesystem-dev libboost-log-dev libboost-program-options-dev
+          llvm-10-dev clang-10 libclang-10-dev default-jre libssl1.0-dev libmagic-dev
+          libgit2-dev ctags libgtest-dev libldap-2.4-2 unzip
+
+      - name: Install Postgresql Ubuntu 18
+        if: ${{ matrix.os == 'ubuntu-18.04' && matrix.db == 'postgresql' }}
+        run: sudo apt-get install postgresql-server-dev-10
+
+      - name: Install SQLite3 Ubuntu 18
+        if: ${{ matrix.os == 'ubuntu-18.04' && matrix.db == 'sqlite3' }}
+        run: sudo apt-get install libsqlite3-dev
+
+      - name: Cache ODB Ubuntu 18
+        id: odb-cache
+        if: ${{ matrix.os == 'ubuntu-18.04' }}
+        uses: actions/cache@v2
+        with:
+          path: ~/odb_install
+          key: ${{ matrix.db }}-odb-v2
+
       # We need build dependencies for CodeCompass, as it will parsed as well
       - name: Install required packages for build
         run: ./.github/scripts/${{ matrix.os }}/setup_build.sh
+
 
       - name: Install database packages
         run: ./.github/scripts/${{ matrix.os }}/setup_${{matrix.db}}.sh
@@ -222,6 +315,27 @@ jobs:
       - name: Set has-compiled-dependencies flag
         id: compilation-flag
         run: |
+          echo "LD_LIBRARY_PATH=$HOME/thrift_install/lib:$HOME/odb_install/lib:$CMAKE_PREFIX_PATH" >> $GITHUB_ENV
+          echo "PATH=$HOME/thrift_install/bin:$HOME/odb_install/bin:$PATH" >> $GITHUB_ENV
+
+      # Ubuntu 20.04 commands
+      - name: Install required packages Ubuntu 20
+        if: ${{ matrix.os == 'ubuntu-20.04' }}
+        run: >
+          sudo apt-get install -y git cmake make g++ libboost-filesystem-dev
+          libboost-log-dev libboost-program-options-dev llvm-10-dev clang-10
+          libclang-10-dev libgraphviz-dev libgtest-dev odb libodb-dev
+          libthrift-dev default-jre libssl1.1 libmagic-dev libgit2-dev ctags
+          libldap-2.4-2 unzip
+
+      - name: Install Postgresql Ubuntu 20
+        if: ${{ matrix.os == 'ubuntu-20.04' && matrix.db == 'postgresql' }}
+        run: sudo apt-get install libodb-pgsql-dev postgresql-server-dev-12
+
+      - name: Install SQLite3 Ubuntu 20
+        if: ${{ matrix.os == 'ubuntu-20.04' && matrix.db == 'sqlite3' }}
+        run: sudo apt-get install libodb-sqlite-dev libsqlite3-dev
+        
           if [ -f ./.github/scripts/${{ matrix.os }}/compile_build.sh ]; then
             echo "HAS_COMPILED_DEPENDENCIES=true" >> "$GITHUB_ENV"
           else
@@ -239,6 +353,8 @@ jobs:
           restore-keys: |
             ${{ matrix.os }}-compile-install-${{ needs.build.outputs.ubuntu-20-04-compile-hash-key }}
             ${{ matrix.os }}-compile-install-${{ needs.build.outputs.ubuntu-22-04-compile-hash-key }}
+
+
 
       - name: Download CodeCompass binaries
         uses: actions/download-artifact@v2
